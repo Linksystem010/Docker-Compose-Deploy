@@ -160,35 +160,6 @@ ansible-inventory -i inventory.ini --list
 
 ---
 
-## 📸 Capturas de la Aplicación
-
-### Vista Principal y lista de productos
-<img width="921" height="333" alt="image" src="https://github.com/user-attachments/assets/8e986dcc-d998-483b-b91e-dd4bea84eb0b" />
-*Página principal mostrando la lista de productos*
-
-### Creación de productos
-<img width="323" height="254" alt="image" src="https://github.com/user-attachments/assets/f0f80c3e-33ee-4848-b216-5d35cffb9e96" />
-
-*Interfaz para crear, editar y eliminar productos*
-
-### API Dashboard
-<img width="1016" height="227" alt="image" src="https://github.com/user-attachments/assets/c55d7ecf-50e4-423f-905a-71643f6fe077" />
-
-*FASTAPI docs*
-
-### Logs de Contenedores
-
-# Ejemplo de logs exitosos
-<img width="1600" height="900" alt="image" src="https://github.com/user-attachments/assets/9a79fd0a-bdb5-408a-ad0e-903513dadd57" />
-
-
-
-### Estado de Servicios
-
-# Ejemplo de salida de docker ps
-<img width="595" height="171" alt="image" src="https://github.com/user-attachments/assets/dd595bcb-75f6-49de-b882-d2ed9038b027" />
-
-
 
 **Error: Contenedor no puede conectar a la base de datos**
 ```bash
