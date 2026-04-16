@@ -1,0 +1,212 @@
+---
+- name: Desplegar aplicación Docker - Completamente autónomo
+  hosts: controller
+  become: true
+  vars:
+    repo_url: "https://github.com/Daniout/Taller_Docker_Compose.git"
+    repo_path: "/home/sysadmin/taller_docker"
+    app_url: "http://{{ hostvars[inventory_hostname].ansible_host }}:3000"
+    
+  tasks:
+    # ===== VERIFICACIÓN INICIAL =====
+    - name: Verificar conectividad básica
+      ping:
+
+    # ===== INSTALACIÓN DOCKER (SOLO SI ES NECESARIO) =====
+    - name: Verificar si Docker está instalado
+      command: docker --version
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Instalar Docker si no existe
+      block:
+        - name: Limpiar configuraciones previas de repositorios Docker
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /etc/apt/sources.list.d/docker.list
+            - /etc/apt/keyrings/docker.asc
+            - /etc/apt/keyrings/docker.gpg
+          ignore_errors: yes
+
+        - name: Crear directorio keyrings
+          file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+
+        - name: Instalar curl si no existe
+          apt:
+            name: curl
+            state: present
+            update_cache: yes
+          ignore_errors: yes
+
+        - name: Descargar e instalar clave Docker en un solo comando
+          shell: |
+            curl -fsSL https://download.docker.com/linux/debian/gpg | \
+            sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+            sudo chmod a+r /etc/apt/keyrings/docker.asc
+          args:
+            creates: /etc/apt/keyrings/docker.asc
+
+        - name: Agregar repositorio Docker
+          shell: |
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+            sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        - name: Actualizar cache después de agregar repo Docker
+          apt:
+            update_cache: yes
+
+        - name: Instalar Docker
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            state: present
+
+        - name: Iniciar Docker
+          systemd:
+            name: docker
+            state: started
+            enabled: true
+
+      when: docker_check.rc != 0
+
+    # ===== CONFIGURACIÓN DE USUARIO DOCKER =====
+    - name: Verificar si sysadmin está en grupo docker
+      shell: groups sysadmin | grep -q docker
+      register: user_in_docker_group
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Agregar sysadmin a grupo docker (con reintentos)
+      shell: |
+        # Esperar si el archivo está bloqueado
+        for i in {1..5}; do
+          if sudo usermod -aG docker sysadmin 2>/dev/null; then
+            break
+          fi
+          echo "Intento $i fallido, esperando..."
+          sleep 2
+        done
+      when: user_in_docker_group.rc != 0
+      ignore_errors: yes
+
+    - name: Reiniciar Docker para aplicar cambios de grupo
+      systemd:
+        name: docker
+        state: restarted
+      when: user_in_docker_group.rc != 0
+
+    - name: Pausa breve para que Docker termine de iniciar
+      pause:
+        seconds: 5
+      when: user_in_docker_group.rc != 0
+
+    # ===== DESPLIEGUE DE LA APLICACIÓN =====
+    - name: Instalar git si no existe
+      apt:
+        name: git
+        state: present
+      ignore_errors: yes
+
+    - name: Crear directorio del proyecto
+      file:
+        path: "{{ repo_path }}"
+        state: directory
+        owner: sysadmin
+        group: sysadmin
+        mode: '0755'
+
+    - name: Clonar repositorio
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_path }}"
+        version: main
+        force: yes
+      become_user: sysadmin
+
+    - name: Detener contenedores existentes
+      shell: docker compose down --remove-orphans 2>/dev/null || true
+      args:
+        chdir: "{{ repo_path }}"
+      become_user: sysadmin
+
+    - name: Limpiar contenedores volumenes e imagenes existentes
+      shell: |
+        # Detener todos los contenedores del proyecto
+        docker compose down --remove-orphans --volumes 2>/dev/null || true
+    
+        # Forzar eliminación del contenedor problemático si existe
+        docker rm -f postgres_db 2>/dev/null || true
+    
+        # Limpiar TODO el sistema (incluyendo TODAS las imágenes no usadas)
+        docker system prune -af
+
+        # Eliminar imágenes específicas por nombre (por si acaso)
+        docker images | grep 'taller_docker\|backend\|frontend' | awk '{print 
+        $3}' | xargs -r docker rmi -f 2>/dev/null || true
+      args:
+        chdir: "{{ repo_path }}"
+      become_user: sysadmin
+
+    - name: Construir y levantar aplicación
+      shell: |
+        # Primer intento normal
+        if ! docker compose up -d --build --force-recreate; then
+          echo "Primer intento falló, probando con sudo..."
+          sudo docker compose up -d --build --force-recreate
+        fi
+      args:
+        chdir: "{{ repo_path }}"
+      become_user: sysadmin
+      register: compose_result
+
+    - name: Esperar a que la aplicación inicie
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 3000
+        delay: 10
+        timeout: 120
+      ignore_errors: yes
+
+    # ===== VERIFICACIONES FINALES =====
+    - name: Verificar contenedores corriendo
+      shell: docker compose ps || sudo docker compose ps
+      args:
+        chdir: "{{ repo_path }}"
+      become_user: sysadmin
+      register: containers_status
+      ignore_errors: yes
+
+    - name: Mostrar estado final
+      debug:
+        msg: |
+          ===== DESPLIEGUE COMPLETADO =====
+          Estado de contenedores:
+          {{ containers_status.stdout_lines | default(['No se pudo verificar']) | join('\n') }}
+          
+          Aplicación disponible en: {{ app_url }}
+          ================================
+
+    - name: Verificar acceso web
+      uri:
+        url: "{{ app_url }}"
+        method: GET
+        status_code: 200
+        timeout: 30
+      delegate_to: localhost
+      become: no
+      ignore_errors: yes
+      register: web_check
+    - name: Resultado final
+      debug:
+        msg: "Aplicación desplegada en: {{ app_url }}"
+          

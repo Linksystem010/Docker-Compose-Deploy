@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#btn{
+    margin: 7px;
+}
+.search-container {
+    display: relative;
+    margin-left: 20px;
+    padding: 2% 30px;
+  }
+  
+  
+  .report-container{
+    margin-top: 19px;
+    margin-left: 23rem;
+    width: min-content;
+    align-content: center;
+    
+  }
+  button[type="button"]:hover{
+    border-color: rgb(224, 223, 223);
+  }
+
+.box-container{
+  display: flex;
+  
+}
+
+
+.info-container {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.total-productos{
+  position: absolute;
+  text-align: center;
+  margin-left: 5rem;
+  margin-top: 2rem;
+}
+
+.costo-productos{
+  position: absolute;
+  margin-left: 40rem;
+
+
+}
+.img-total{
+  background-color: aqua;
+}
+ .costo-productos .img-costo{
+  display: flex;
+  justify-content: right;
+  width: 10px;
+  height: 10px;
+  
+  margin-right: 20rem;
+}
+.count{
+  display: flex;
+  font-size: 2rem;
+  color: #11b342;
+}
+@media only screen and (min-width: 768px) {
+  .info-container {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+
+  .total-productos,
+  .costo-productos, .img-costo, .texto-costo {
+    width: 45%;
+  }
+}
+
+.card-1 {
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px;
+  width: 200px;
+  
+  display: inline-block;
+  
+  text-align: center;
+}
+.card-2 {
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px;
+  width: 200px;
+  display: inline-block;
+  text-align: center;
+}
+
+.card-1 h3 {
+  font-size: 20px;
+  margin-top: 0;
+}
+
+.card-2 h3 {
+  font-size: 20px;
+  margin-top: 0;
+}
+.card-info {
+  font-size: 40px;
+  margin: 20px 0;
+  color: #007bff;
+  font-weight: bold;
+}
+
+.card-info i {
+  margin-right: 10px;
+}
+
+body{
+  margin: 0;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+.grilla{
+  padding: 1em 2em;
+}
+table{
+  border-collapse: collapse;
+  
+
+}
+td , th{
+  padding: 5px 10px;
+  border: 1px solid grey;
+}
+@media (max-width: 480px){
+  table{
+    width: 100%;
+    font-size: 14.4px;
+  }
+  table tr{
+    display: flex;
+    flex-direction: column;
+    border-radius: 1px solid grey;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  table thead{
+    display: none;
+  }
+  table td[data-titulo]{
+    display: flex;
+  }
+  table td[data-titulo]::after{
+    content: attr( data-titulo);
+    width: 90px;
+    color:black
+  }
+  table td, table th{
+    border: none;
+  }
+}

@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: productsdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  backend:
+    build: ./backProducts
+    container_name: backend_app
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: productsdb
+    ports:
+      - "8080:8080"
+    command: >
+      sh -c "apt-get update && apt-get install -y wait-for-it &&
+             wait-for-it postgres:5432 --timeout=30 --
+             uvicorn app.main:app --host 0.0.0.0 --port 8080"
+    networks:
+      - app_network
+      
+  frontend:
+    build: 
+      context: ./frontProducts
+      args:
+        - VITE_BACKEND_URL=http://localhost:8080
+    container_name: frontend_app
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - app_network
+
+volumes:
+  postgres_data:
+
+networks:
+  app_network:
